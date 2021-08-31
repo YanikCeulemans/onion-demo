@@ -31,8 +31,12 @@ const main = async () => {
       const saveFile = mkSaveFile({
         logger: { log: console.log.bind(console, "from main:") },
         persistence: {
-          write: (path, contents) => {
-            return axios.post(`http://localhost:54321/${path}`, contents);
+          write: async (path, contents) => {
+            const response = await axios.post<string>(
+              `http://localhost:54321/${path}`,
+              contents
+            );
+            return response.status === 200 ? "success" : "error";
           },
         },
       });
