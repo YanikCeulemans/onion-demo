@@ -1,12 +1,24 @@
 import * as path from "path";
-import axios from "axios";
 
-export const saveFile = async (p: string, contents: Buffer): Promise<void> => {
-  console.log(`saving file ${path.basename(p)} to ${path.dirname(p)}`);
-  const response = await axios.post(`http://localhost:54321/${p}`, contents);
+export interface Logger {
+  log: (message: string) => void;
+}
 
-  if (response.status === 200) {
-    console.log(`successfully saved file ${p}`);
+export interface Persistence {
+  write: (path: string, contents: Buffer) => Promise<"success" | "error">
+}
+
+export type Dependencies = {
+  logger: Logger;
+  persistence: Persistence;
+}
+
+export const mkSaveFile = ({ logger, persistence }: Dependencies) => async (p: string, contents: Buffer): Promise<void> => {
+  logger.log(`saving file ${path.basename(p)} to ${path.dirname(p)}`);
+  const response = await persistence.write(p, contents);
+
+  if (response === "success") {
+    logger.log(`successfully saved file ${p}`);
   } else {
     throw new Error(`Failed to save file ${p}`);
   }

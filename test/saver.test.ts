@@ -1,19 +1,33 @@
-import axios from "axios";
-import { saveFile } from "../src/saver";
+import { mkSaveFile } from "../src/saver";
 
 describe("saveFile", () => {
   it("should work", async () => {
-    jest.spyOn(axios, "post").mockResolvedValue({ status: 200 });
-    jest.spyOn(console, 'log').mockReturnValue(undefined);
+    const logSpy = jest.fn();
+    const saveFile = mkSaveFile({
+      logger: {
+        log: logSpy
+      },
+      persistence: {
+        write: () => Promise.resolve("success"),
+      }
+    })
 
     await expect(
       saveFile("test/test-file.txt", Buffer.from("test contents"))
     ).resolves.toEqual(undefined);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/saving file/));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/successfully saved file/));
   });
 
   it("should throw an error when saving failed", async () => {
-    jest.spyOn(axios, "post").mockResolvedValue({ status: 500 });
-    jest.spyOn(console, 'log').mockReturnValue(undefined);
+    const saveFile = mkSaveFile({
+      logger: {
+        log: () => {},
+      },
+      persistence: {
+        write: () => Promise.resolve("error"),
+      }
+    })
 
     await expect(
       saveFile("test/test-file.txt", Buffer.from("test contents"))
