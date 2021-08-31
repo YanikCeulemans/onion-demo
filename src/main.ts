@@ -1,6 +1,7 @@
 import express from "express";
-import axios from "axios";
 import type { ErrorRequestHandler, Express } from "express";
+import fs from "fs";
+import * as path from "path";
 import { mkSaveFile } from "./saver";
 
 const setupExpressApp: (setup: (app: Express) => void) => void = (setup) => {
@@ -28,15 +29,25 @@ const setupExpressApp: (setup: (app: Express) => void) => void = (setup) => {
 const main = async () => {
   setupExpressApp((app) => {
     app.put("/api/save-file", async (_req, res, next) => {
+      const logs: string[] = [];
       const saveFile = mkSaveFile({
-        logger: { log: console.log.bind(console, "from main:") },
+        logger: { log: logs.push.bind(logs) },
         persistence: {
-          write: async (path, contents) => {
-            const response = await axios.post<string>(
-              `http://localhost:54321/${path}`,
-              contents
-            );
-            return response.status === 200 ? "success" : "error";
+          write: async (p, contents) => {
+            try {
+              const filePath = path.resolve("/Users/yanikceulemans/Desktop", p);
+              logs.push(`making directories for ${filePath}`);
+              await fs.promises.mkdir(path.dirname(filePath), {
+                recursive: true,
+              });
+              logs.push(`about to write ${filePath}`);
+              await fs.promises.writeFile(filePath, contents);
+              logs.push("wrote file");
+              return "success";
+            } catch (e) {
+              logs.push(`${e}`);
+              return "error";
+            }
           },
         },
       });
@@ -49,6 +60,8 @@ const main = async () => {
         res.send("ok");
       } catch (e) {
         next(e);
+      } finally {
+        console.log(logs.join("\n\t"));
       }
     });
   });
